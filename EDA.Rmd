@@ -1,0 +1,761 @@
+---
+title: "Project"
+author: "David Suero Cobos"
+date: "2022-12-05"
+output: html_document
+---
+```{r}
+#Loading libraries
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+# Project
+## EDA - Exploratory Data Analysis
+### Overview of the dataset
+#### Goal
+*Students enrolled in different undergraduate degrees*, such as agronomy, design,
+education, nursing, journalism, management, social service, and technologies. 
+
+The dataset includes information known at the time of *student enrollment* 
+(academic path, demographics, and social-economic factors) and the *students'* 
+*academic performance  at the end of the first and second semesters.* 
+
+The data is used to build classification models to *predict students' dropout and* 
+*academic sucess* by using machine learning techniques to identify students at 
+risk at an early stage of their academic path. The problem is formulated as a 
+three category classification task *(dropout, enrolled, and graduate)*, in which 
+there is a strong imbalance towards one of the classes.
+
+```{r}
+Students <- read.csv("data.csv",sep = ";")
+Students
+# Summarizing of our data
+summary(Students)
+glimpse(Students) 
+```
+
+#### Variables that may raise questions
+Elements that impact students in their decision to enrol, drop out or graduate.
+1. Independent Variable: Target
+- Marital status
+- Application.order
+- Course
+- Daytime/evening attendance
+- Previous qualification
+- Previous qualification (grade)
+- Nacionality
+- Admission grade
+- Displaced
+- Educational special needs
+- Debtor
+- Tuition fees up to date
+- Gender
+- Scholarship holder
+- Age at enrollment
+- International
+- Curricular units 1st sem (enrolled)
+- Curricular units 1st sem (approved)
+- Curricular units 1st sem (grade)
+- Curricular units 2nd sem (enrolled)
+- Curricular units 2nd sem (approved)
+- Curricular units 2nd sem (grade)
+- Unemployment rate
+- GDP
+- Pass rate (We will need to create this variable)
+
+----------------
+### Drop all variables that will not be used.
+- Application.mode
+- Mother's qualification
+- Father's qualification
+- Mother's occupation
+- Father's occupation
+- Curricular units 1st sem (credited)
+- Curricular units 1st sem (evaluations)
+- Curricular units 1st sem (without evaluations)
+- Curricular units 2nd sem (credited)
+- Curricular units 2nd sem (evaluations)
+- Curricular units 2nd sem (without evaluations)
+- Inflation rate
+```{r}
+Students <-  subset(Students, 
+                    select = -c(Application.mode,
+                                Mother.s.qualification, 
+                                Father.s.qualification,
+                                Mother.s.occupation, 
+                                Father.s.occupation,
+                                Curricular.units.1st.sem..credited.,
+                                Curricular.units.1st.sem..evaluations.,
+                                Curricular.units.1st.sem..without.evaluations.,
+                                Curricular.units.2nd.sem..credited.,
+                                Curricular.units.2nd.sem..evaluations.,
+                                Curricular.units.2nd.sem..without.evaluations.,
+                                Inflation.rate))
+head(Students)
+colnames(Students)
+```
+
+----------------
+### Cleaning Variable names
+This step is because there are variable names that are difficult to handle due 
+to punctuation.
+```{r}
+Students <- Students %>% 
+  rename(Previous.qualification.grade = Previous.qualification..grade.)
+
+Students <- Students %>% 
+  rename(Daytime.evening.attendance = Daytime.evening.attendance.)
+
+Students <- Students %>% 
+  rename(Curricular.units.1st.sem.enrolled = Curricular.units.1st.sem..enrolled.)
+
+Students <- Students %>% 
+  rename(Curricular.units.1st.sem.approved = Curricular.units.1st.sem..approved.)
+
+Students <- Students %>% 
+  rename(Curricular.units.1st.sem.grade = Curricular.units.1st.sem..grade.)
+
+Students <- Students %>% 
+  rename(Curricular.units.2nd.sem.enrolled = Curricular.units.2nd.sem..enrolled.)
+
+Students <- Students %>% 
+  rename(Curricular.units.2nd.sem.approved = Curricular.units.2nd.sem..approved.)
+
+Students <- Students %>% 
+  rename(Curricular.units.2nd.sem.grade = Curricular.units.2nd.sem..grade.)
+
+names(Students)
+```
+
+----------------
+### Renaming values of our variables
+The purpose of this is to be able to correctly visualize the values that will be 
+shown in the graphs that we will analyze later.
+```{r}
+library(stringr)
+#Marital status
+rep_str = c('1'='single',
+            '2'='married',
+            '3'='widower',
+            '4'='divorced',
+            '5'='facto union',
+            '6'='legally separated')
+Students$Marital.status <- str_replace_all(Students$Marital.status, rep_str)
+
+#Application order
+rep_str = c('1'='1st choice',
+            '2'='2nd choice',
+            '3'='3rd choice',
+            '4'='4th choice',
+            '5'='5th choice',
+            '6'='6th choice',
+            '7'='7th choice',
+            '8'='8th choice',
+            '9'='9th choice')
+Students$Application.order <- str_replace_all(Students$Application.order, rep_str)
+
+
+#Course
+rep_str = c('33'='Biofuel Production Technologies',
+            '171'='Animation and Multimedia Design',
+            '8014'='Social Service (evening)',
+            '9003'='Agronomy',
+            '9070'='Communication Design',
+            '9085'='Veterinary Nursing',
+            '9119'='Informatics Engineering',
+            '9130'='Equinculture',
+            '9147'='Management (daytime)',
+            '9238'='Social Service (daytime)', 
+            '9254'='Tourism',
+            '9500'='Nursing',
+            '9556'='Oral Hygiene',
+            '9670'='Advertising and Marketing Management',
+            '9773'='Journalism and Communication',
+            '9853'='Basic Education',
+            '9991'='Management (evening)')
+Students$Course <- str_replace_all(Students$Course, rep_str)
+
+#Daytime/evening attendance
+rep_str = c('1'='daytime','0'='evening')
+Students$Daytime.evening.attendance <- 
+  str_replace_all(Students$Daytime.evening.attendance, rep_str)
+Students$Daytime.evening.attendance
+
+#Previous qualification
+rep_str = c('1'='Secondary education',
+            '2'='Bachelors degree',
+            '3'='Degree',
+            '4'='Masters',
+            '5'='Doctorate ',
+            '6'='Frequency of higher education',
+            '9'='Schooling',
+            '10'='Schooling',
+            '12'='Schooling',
+            '14'='Schooling', 
+            '15'='Schooling',
+            '19'='Basic education',
+            '38'='Basic education',
+            '39'='Technological specialization course',
+            '40'='Degree',
+            '42'='Professional higher technical course',
+            '43'='Master')
+Students$Previous.qualification <-
+  str_replace_all(Students$Previous.qualification, rep_str)
+Students$Previous.qualification
+
+#Nacionality
+rep_str = c('1'='Portuguese',
+            '2'='German',
+            '6'='Spanish',
+            '11'='Italian',
+            '13'='Dutch',
+            '14'='English',
+            '17'='Lithuanian',
+            '21'='Angolan',
+            '22'='Cape Verdean',
+            '24'='Guinean',
+            '25'='Mozambican',
+            '26'='Santomean',
+            '32'='Turkish',
+            '41'='Brazilian',
+            '62'='Romanian',
+            '100'='Moldova (Republic of)',
+            '101'='Mexican',
+            '103'='Ukrainian',
+            '105'='Russian',
+            '108'='Cuban',
+            '109'='Colombian')
+Students$Nacionality <- str_replace_all(Students$Nacionality, rep_str)
+
+#Displaced
+rep_str = c('1'='yes','0'='no')
+Students$Displaced <- 
+  str_replace_all(Students$Displaced, rep_str)
+
+#Educational special needs
+rep_str = c('1'='yes','0'='no')
+Students$Educational.special.needs <- 
+  str_replace_all(Students$Educational.special.needs, rep_str)
+
+#Debtor
+rep_str = c('1'='yes','0'='no')
+Students$Debtor <- str_replace_all(Students$Debtor, rep_str)
+
+#Tuition fees up to date
+rep_str = c('1'='yes','0'='no')
+Students$Tuition.fees.up.to.date <- 
+  str_replace_all(Students$Tuition.fees.up.to.date, rep_str)
+
+#Gender
+rep_str = c('1'='male','0'='female')
+Students$Gender <- str_replace_all(Students$Gender, rep_str)
+
+#Scholarship holder
+rep_str = c('1'='yes','0'='no')
+Students$Scholarship.holder <- str_replace_all(Students$Scholarship.holder, rep_str)
+
+#International
+rep_str = c('1'='yes','0'='no')
+Students$International <- str_replace_all(Students$International, rep_str)
+```
+
+----------------
+### Transforming variables to factors
+Most variables are discrete (Characters), so we must convert them to factors to 
+avoid interpretation errors later on. 
+
+However, there are some that have multiple variables, so it is not convenient to 
+add them as factors. We will add only those that contain different categories 
+to be able to reflect them in graphs.
+```{r}
+#We have to convert our discrete values to factor values
+names <- c('Marital.status','Application.order','Course' ,
+           'Daytime.evening.attendance','Previous.qualification',
+           'Nacionality', 'Displaced' ,'Educational.special.needs','Debtor' ,
+           'Tuition.fees.up.to.date','Gender' ,'Scholarship.holder',
+           'International','Target')
+Students[,names] <- lapply(Students[,names] , factor)
+str(Students)
+Students
+
+```
+
+----------------
+### Errors in our factor levels
+```{r}
+library(plyr)
+
+#Nacionality
+levels(Students$Nacionality)
+Students$Nacionality <- revalue(Students$Nacionality, c("3German"="German", "German4"="German", "GermanGerman"="German", "Portuguese05"="Portuguese", "Portuguese0Portuguese"="Portuguese","Portuguese7"="Portuguese", 
+"SpanishGerman"="Spanish", "4Portuguese"="Portuguese", "GermanPortuguese"="German",
+"Portuguese00"="Portuguese", "Portuguese08"="Portuguese", "Portuguese3"="Portuguese","PortuguesePortuguese"="Portuguese", "German5"="German",
+"GermanSpanish"="Spanish","Portuguese03"="Portuguese","Portuguese09"="Portuguese",
+"Portuguese4"="Portuguese"))
+levels(Students$Nacionality)
+
+#Previous qualification
+levels(Students$Previous.qualification)
+Students$Previous.qualification <- 
+  revalue(Students$Previous.qualification,c("Degree8"="Degree",
+"DegreeSchooling"="Degree", "Masters0"="Masters",
+"MastersBachelors degree"="Masters", "MastersDegree"="Masters", 
+"Secondary education0"="Secondary education",
+"Secondary educationBachelors degree"="Bachelors degree",
+"Doctorate "="Doctorate",
+"Secondary educationDoctorate "="Doctorate",
+"Secondary educationMasters"="Masters", 
+"Secondary educationSchooling"="Secondary education"))
+levels(Students$Previous.qualification)
+```
+
+----------------
+### Step 3: Cleaning the dataset, NAs, and inconsistent data
+```{r}
+(sum(is.na(Students))/
+  (nrow(Students)*ncol(Students)))*100 #NAs
+
+library(psych)
+describe(Students)
+```
+We can observe that the dataset does not offer NA Values. Moreover, all the 
+values in our dataset represent real values, so there are no errors in the data 
+set, i.e., no inconsistent data.
+
+### Creation of a new variable (Pass rate)
+It would be good to analyze the pass rate of all students, so we will create a 
+new variable to analyze it in detail later.
+```{r}
+Students
+
+Students$Pass.rate.1st.sem <-
+  Students$Curricular.units.1st.sem.approved/Students$Curricular.units.1st.sem.enrolled
+
+Students$Pass.rate.2nd.sem <-
+  Students$Curricular.units.2nd.sem.approved/Students$Curricular.units.2nd.sem.enrolled
+```
+
+----------------
+### Studying our variables
+*Possible variables that could influence others:*
+FORMULAR PREGUNTAS PRIMERO A RAIZ DE ESTAS VARIABLES.
+Elements that impact students in their decision to enrol, drop out or graduate.
+
+#### Discrete varaiables
+1. Independent Variable: *Target* 
+- Marital status
+```{r}
+Marital.status.Graph <- ggplot(Students, aes(Marital.status,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Marital Status") + labs(color = "Target: ") + 
+  ggtitle('Marital status / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Marital.status.Graph
+#There seems to be a close relationship between the abandonment rate and 
+#legal separation.
+#On the other hand, the opposite is true for singles. They are those who have a 
+#higher graduation rate
+```
+
+*- Application.order*
+```{r}
+Application.order.Graph <- ggplot(Students, aes(Application.order,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Application Order") + labs(color = "Target: ") +
+  ggtitle('Application Order / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Application.order.Graph
+#There seems to be a close relationship between the graduate rate and 
+#the first poisition in the application order. This seems coherent, since those 
+#who applied to their course in first position, are the ones who have more 
+#interest in the subject.
+#In the others, there is no aspect to highlight.
+```
+
+*- Course*
+```{r}
+Course.Graph <- ggplot(Students, aes(Course,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Course") + labs(color = "Target: ") +
+  ggtitle('Course / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Course.Graph
+#There seems to be a close relationship between the graduate rate and 
+#the nursing degree, social service, journalism and Communication Design
+
+#On the other side, there seems to be a close relationship between the Dropout 
+#rate and the Biofuel Production Technologies, Equinculture, and Informatics
+#Engineering
+```
+
+*- Daytime/evening attendance*
+```{r}
+Daytime.evening.attendance.Graph <- 
+  ggplot(Students, aes(Daytime.evening.attendance,fill=Target)) + 
+  geom_bar(position = "fill") + ylab("Proportion") + 
+  xlab("Daytime Evening Attendance") + labs(color = "Target: ") +
+  ggtitle('Daytime Evening Attendance / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Daytime.evening.attendance.Graph
+
+#There seems to be a close relationship between the evenings and the droputs,
+#maybe it´s beacuse people are more socially active in the afternoon, get 
+#frustrated, and drop out of school.
+```
+
+*- Previous qualification* 
+```{r}
+Previous.qualification.Graph <- ggplot(Students, aes(Previous.qualification,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Previous Qualification") + labs(color = "Target: ") +
+  ggtitle('Previous Qualification / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Previous.qualification.Graph
+
+#Through this graph (and with the exception of the variable "Schoolarship" 
+#which is mandatory for everyone), we can see how those careers with the highest 
+#dropout rate are the doctorates and bachelors degree, and those with the lowest 
+#dropout rate and the highest graduates, the master's degrees.
+```
+
+*- Nacionality*
+```{r}
+Nacionality.Graph <- ggplot(Students, aes(Nacionality,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Nacionality") + labs(color = "Target: ") +
+  ggtitle('Nacionality / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Nacionality.Graph
+
+#There seems to be a close relationship between the droputs and the portuguese
+#people, and the graduate and german people.
+```
+
+*- Displaced*
+```{r}
+Displaced.Graph <- ggplot(Students, aes(Displaced,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Displaced") + labs(color = "Target: ") +
+  ggtitle('Displaced / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Displaced.Graph
+
+#There seems to be a close relationship between the droputs and the people
+#who has not had to travel for his studies, same as the graduates with those same
+#people. This may be due to the fact that international students generally know 
+#that their conditions are more difficult,so they make more of an effort.
+```
+
+*- Educational special needs*
+```{r}
+Educational.special.needs.Graph <- ggplot(Students, aes(Educational.special.needs,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Educational Special Needs") + labs(color = "Target: ") +
+  ggtitle('Educational Special Needs / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Educational.special.needs.Graph
+
+#There´s no difference
+```
+
+*- Debtor*
+```{r}
+Debtor.Graph <- ggplot(Students, aes(Debtor,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Debtor") + labs(color = "Target: ") +
+  ggtitle('Debtor / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Debtor.Graph
+
+#There seems to be a close relationship between the droputs and debtors.
+#This make sense since those who cannot afford to pay for their studies must 
+#abandon their careers
+```
+
+*- Tuition fees up to date*
+```{r}
+Tuition.fees.up.to.date.Graph <- 
+  ggplot(Students, aes(Tuition.fees.up.to.date,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Tuition fees up to date") + labs(color = "Target: ") +
+  ggtitle('Tuition fees up to date / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Tuition.fees.up.to.date.Graph
+#This, as in the previous case, makes sense, since they are considered debtors 
+#and therefore, they will probably be expelled or will end up abandoning their 
+#careers because they cannot afford them.
+```
+
+*- Gender*
+```{r}
+Gender.Graph <- ggplot(Students, aes(Gender,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Gender") + labs(color = "Target: ") +
+  ggtitle('Gender / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Gender.Graph
+
+#There is a big difference between the different genres. It can be explained by 
+#the fact that women are generally much more responsible and hardworking than men.
+```
+
+*- Scholarship holder*
+```{r}
+Scholarship.holder.Graph <- ggplot(Students, aes(Scholarship.holder,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("Scholarship Holder") + labs(color = "Target: ") +
+  ggtitle('Scholarship Holder / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Scholarship.holder.Graph
+
+#This variable also makes sense, because generally, those students who receive 
+#tuition, make a much greater effort to succeed in their careers, as it is a 
+#good opportunity for them.
+```
+
+*- International*
+```{r}
+International.Graph <- ggplot(Students, aes(International,fill=Target)) + 
+  geom_bar(position = "fill")  + 
+  ylab("Proportion") + xlab("International") + labs(color = "Target: ") +
+  ggtitle('International / Target') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+International.Graph
+
+#There is no major difference
+```
+
+----------------
+#### Continuous Variables -> 
+Finally, we must compare our target variable with some continuous variables
+which we will see below.
+
+*- Courses / Previous qualification Grade*
+```{r}
+Previous.qualification.grade.Graph <- 
+  ggplot(Students, aes(Course,Previous.qualification.grade,fill=Target)) + 
+  geom_boxplot() + 
+  ylab("Previous qualification Grade") + xlab("Courses") +
+  ggtitle('Courses / Previous qualification Grade') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Previous.qualification.grade.Graph
+
+#Through the continuous variable "Previous qualification Grade", and linking this 
+#with the discrete variables "Target" and "Course" we can see how in practically 
+#all courses, the Previous qualification Grade is lower in those students who 
+#dropped out, which makes sense.
+
+#The Agronomy course is the one with the highest difference
+```
+
+*- Courses / Admission grade*
+```{r}
+Admission.grade.Graph <- 
+  ggplot(Students, aes(Course, Admission.grade, fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Admission grade") + xlab("Courses") + labs(color = "Target: ") +
+  ggtitle('Courses / Admission grade') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Admission.grade.Graph
+
+#As for the admission grade variable, we can see that the courses with the 
+#highest admission grade rate are the same as those analyzed in the previous 
+#section (Previous qualification Grade), which makes sense because the courses 
+#establish their admission grade according to student demand, so if the admission 
+#grade is high, so will be the grades that belong to the students of that course.
+```
+
+*- Courses / Age at enrollment*
+```{r}
+Age.at.enrollment.Graph <- 
+  ggplot(Students, aes(Course, Age.at.enrollment, fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Age at enrollment") + xlab("Courses") + labs(color = "Target: ") +
+  ggtitle('Courses / Age at enrollment') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Age.at.enrollment.Graph
+
+#As for the age of the individuals in the different training courses, we can see 
+#that the one with the highest average age is Social Service, followed by Management. 
+#All the others are more or less in the same age range.
+
+#As for the difference in our Target variable, it is clear that those who are 
+#older have a much higher dropout rate than young people.
+```
+
+*- Courses / Curricular Units Approved 1st Semester*
+```{r}
+Curricular.units.1st.sem.approved.Graph <- ggplot(Students, aes(Course, Curricular.units.1st.sem.approved,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Curricular Units Approved 1st Semester") + xlab("Courses") + 
+  labs(color = "Target: ") +
+  ggtitle('Courses / Curricular Units Approved 1st Semester') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Curricular.units.1st.sem.approved.Graph
+
+#The graph shows that almost all courses follow the same trend, with the 
+#exception of "Informatics Engineering", which has a lower number of approvals
+#than the rest.
+
+#Unsurprisingly, students who dropped out of the courses had a lower number of 
+#approvals.
+```
+
+*- Courses / Pass Rate First Semester*
+```{r}
+Pass.rate.1st.sem.Graph <- 
+  ggplot(Students, aes(Course,Pass.rate.1st.sem,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Pass Rate First Semester") + xlab("Courses") + 
+  labs(color = "Target: ") +
+  ggtitle('Courses / Pass Rate First Semester') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Pass.rate.1st.sem.Graph
+
+#As is logical, the graph shows that all of those graduates passed all of their 
+#subjects (located in the upper part of the graph, in the 100% zone), while those
+#who dropped out are at different lower rates.
+
+#The course with the lowest pass rate is "Informatics Engineering", as we showed 
+#in the previous step of number of passes, which makes sense because they are 
+#related variables.
+```
+
+*- Courses / 1st Semester Grade*
+```{r}
+Students
+Curricular.units.1st.sem.grade.Graph <- ggplot(Students, aes(Course, Curricular.units.1st.sem.grade,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("1st Semester Grade") + xlab("Courses") + 
+  labs(color = "Target: ") +
+  ggtitle('Courses / 1st Semester Grade') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Curricular.units.1st.sem.grade.Graph
+#Once again, the graph shows that those students who completed their courses 
+#had a higher final grade than those who dropped out.
+
+#In addition, we can observe that the course with the highest final grade is 
+#"Veterinary Nursing", while the one with the lowest grade is "Management".
+```
+
+*- Courses / Curricular Units Approved 2nd Semester*
+```{r}
+Curricular.units.2nd.sem.approved.Graph <- ggplot(Students, aes(Course, Curricular.units.2nd.sem.approved,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Curricular Units Approved 2nd Semester") + xlab("Courses") + 
+  labs(color = "Target: ") +
+  ggtitle('Courses / Curricular Units Approved 2nd Semester') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Curricular.units.2nd.sem.approved.Graph
+
+#As for the subjects with the highest number of passes in the second semester, 
+#we have "Oral Hygiene", while the one with the lowest number of passes is 
+#"Informatics Engineering" (as in the first semester).
+
+#Once again, the rule is fulfilled that those students who graduated obtained 
+#higher passes than those who dropped out.
+```
+
+*- Courses / Pass Rate 2nd Semester*
+```{r}
+Pass.rate.2nd.sem.Graph <- ggplot(Students, aes(Course, Pass.rate.2nd.sem,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Pass Rate 2nd Semester") + xlab("Courses") + 
+  labs(color = "Target: ") +
+  ggtitle('Courses / Pass Rate 2nd Semester') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Pass.rate.2nd.sem.Graph
+
+#As for the pass rate, the same happens as in the first semester, all the 
+#graduates passed all their subjects, and the subject with the highest pass 
+#rate is "Oral Hygiene", having already been analyzed in the previous step 
+#(Number of passes). 
+```
+
+*- Courses / 2nd Semester Grade*
+```{r}
+Curricular.units.2nd.sem.grade.Graph <- ggplot(Students, aes(Course, Curricular.units.2nd.sem.grade,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("2nd Semester Grade") + xlab("Courses") + 
+  labs(color = "Target: ") +
+  ggtitle('Courses / 2nd Semester Grade') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Curricular.units.2nd.sem.grade.Graph
+
+#As for the final grade of the second semester, it is curious to see how those 
+#who passed the subject of "Informatics Engineering", were those who achieved a 
+#better grade with respect to the other subjects.
+```
+
+*- Courses / Unemployment rate*
+```{r}
+Unemployment.rate.Graph <- ggplot(Students, aes(Course, Unemployment.rate,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("Unemployment rate") + xlab("Courses") + labs(color = "Target: ") +
+  ggtitle('Courses / Unemployment rate') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Unemployment.rate.Graph
+#From the graph we can see how the unemployment rate has no influence at all on 
+#the performance of students, neither of graduates nor of those who had to drop out.
+```
+
+*- Courses / GDP*
+```{r}
+GDP.Graph <- ggplot(Students, aes(Course, GDP,fill=Target)) + 
+  geom_boxplot()  + 
+  ylab("GDP") + xlab("Courses") + labs(color = "Target: ") +
+  ggtitle('Courses / GDP') +
+  theme(plot.title = element_text(hjust = 0.5,  face = "bold")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+GDP.Graph
+
+#Similarly, GDP does not influence the performance of students, neither of 
+#graduates nor of those who had to drop out.
+```
+
+--------------------------------------------------------------------------------
+## Inferential statistics - Logistic regression
+```{r}
+library(ISLR)
+logit <- glm(Target ~ ., data = Students, family = binomial(link = 'logit'))
+summary(logit)
+Students
+```
+
+As expected, not all variables are related to our target, as they are not 
+statistically significant, therefore, we will only keep those that show certain 
+relationship
+```{r}
+logit <- glm(Target ~ Course + Application.order + Marital.status +
+            Previous.qualification, data = Students, 
+            family = binomial(link = 'logit'))
+summary(logit)
+```
+
+
+**PENDING**
